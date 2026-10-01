@@ -1,0 +1,128 @@
+<!--
+  Squarespace Hash Lightbox
+  -------------------------
+  Opens any page of your site in a lightbox when the URL hash is
+  "#lightbox=/page-slug".
+
+  Install: Settings > Advanced > Code Injection > FOOTER, paste this whole file.
+
+  Usage:
+    <a href="#lightbox=/about">About us</a>        (link in any text/button block)
+    https://yoursite.com/#lightbox=/contact          (shareable deep link)
+
+  Only same-site paths are allowed. Esc, the X button, or clicking the dark
+  backdrop closes it.
+-->
+<style>
+  .hlb{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.75);opacity:0;visibility:hidden;transition:opacity .25s,visibility .25s}
+  .hlb.hlb--open{opacity:1;visibility:visible}
+  .hlb__box{position:relative;width:min(1000px,92vw);height:88vh;background:#fff;border-radius:6px;
+    overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.4);transform:translateY(12px);transition:transform .25s}
+  .hlb--open .hlb__box{transform:none}
+  .hlb__frame{width:100%;height:100%;border:0;display:block;opacity:0;transition:opacity .2s}
+  .hlb--loaded .hlb__frame{opacity:1}
+  .hlb__spin{position:absolute;top:50%;left:50%;width:36px;height:36px;margin:-18px;border:3px solid #ddd;
+    border-top-color:#333;border-radius:50%;animation:hlb-spin .8s linear infinite}
+  .hlb--loaded .hlb__spin{display:none}
+  .hlb__close{position:absolute;top:8px;right:8px;z-index:2;width:36px;height:36px;border:0;border-radius:50%;
+    background:rgba(0,0,0,.6);color:#fff;font:24px/36px sans-serif;cursor:pointer;padding:0}
+  .hlb__close:hover{background:#000}
+  html.hlb-lock,html.hlb-lock body{overflow:hidden}
+  @keyframes hlb-spin{to{transform:rotate(360deg)}}
+  @media (max-width:640px){.hlb__box{width:100vw;height:100%;border-radius:0}}
+</style>
+<script>
+(function () {
+  if (window.top !== window.self) return; // never run inside our own lightbox iframe
+  var PREFIX = '#lightbox=';
+  // Hidden inside the lightbox so only the page content shows (7.0 + 7.1 templates).
+  var HIDE_IN_FRAME = '#header,header.Header,.header,#footer-sections,footer.Footer,#footer,' +
+    '.sqs-announcement-bar-dropzone,.sqs-cookie-banner-v2,#sqs-cookie-banner';
+
+  var root, frame, lastFocus;
+
+  function build() {
+    root = document.createElement('div');
+    root.className = 'hlb';
+    root.setAttribute('role', 'dialog');
+    root.setAttribute('aria-modal', 'true');
+    root.innerHTML = '<div class="hlb__box"><div class="hlb__spin"></div>' +
+      '<button class="hlb__close" type="button" aria-label="Close">&times;</button>' +
+      '<iframe class="hlb__frame" title="Lightbox"></iframe></div>';
+    document.body.appendChild(root);
+    frame = root.querySelector('iframe');
+
+    root.addEventListener('click', function (e) {
+      if (e.target === root || e.target.closest('.hlb__close')) close();
+    });
+    frame.addEventListener('load', onFrameLoad);
+  }
+
+  // Returns a safe same-origin path from the hash, or null.
+  function pathFromHash() {
+    var h = location.hash;
+    if (h.indexOf(PREFIX) !== 0) return null;
+    var path = decodeURIComponent(h.slice(PREFIX.length)).trim();
+    if (path.charAt(0) !== '/' || path.charAt(1) === '/' || path.charAt(1) === '\\') return null;
+    return path;
+  }
+
+  function open(path) {
+    if (!root) build();
+    var url = new URL(path, location.origin);
+    if (frame.getAttribute('data-src') !== url.href) {
+      root.classList.remove('hlb--loaded');
+      frame.setAttribute('data-src', url.href);
+      frame.src = url.href;
+    }
+    lastFocus = document.activeElement;
+    document.documentElement.classList.add('hlb-lock');
+    root.classList.add('hlb--open');
+    root.querySelector('.hlb__close').focus();
+  }
+
+  function close() {
+    if (!root || !root.classList.contains('hlb--open')) return;
+    root.classList.remove('hlb--open');
+    document.documentElement.classList.remove('hlb-lock');
+    // Drop the hash without jumping the page or adding a history entry.
+    if (location.hash.indexOf(PREFIX) === 0) {
+      history.replaceState(null, '', location.pathname + location.search);
+    }
+    if (lastFocus && lastFocus.focus) lastFocus.focus();
+  }
+
+  function onFrameLoad() {
+    if (!frame.getAttribute('data-src')) return;
+    try {
+      var doc = frame.contentDocument;
+      var style = doc.createElement('style');
+      style.textContent = HIDE_IN_FRAME + '{display:none!important}' +
+        'body{padding-top:0!important}#page,#siteWrapper,main{margin-top:0!important;padding-top:0!important}';
+      doc.head.appendChild(style);
+      // Regular links inside the lightbox navigate the main window;
+      // lightbox links swap the lightbox content.
+      doc.addEventListener('click', function (e) {
+        var a = e.target.closest && e.target.closest('a[href]');
+        if (!a) return;
+        var href = a.getAttribute('href');
+        if (href.indexOf(PREFIX) === 0) { e.preventDefault(); location.hash = href; return; }
+        if (href.charAt(0) !== '#' && !a.target) a.target = '_top';
+      });
+      doc.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+    } catch (err) { /* cross-origin page: show as-is */ }
+    root.classList.add('hlb--loaded');
+  }
+
+  function sync() {
+    var path = pathFromHash();
+    if (path) open(path); else close();
+  }
+
+  window.addEventListener('hashchange', sync);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sync);
+  else sync();
+})();
+</script>
