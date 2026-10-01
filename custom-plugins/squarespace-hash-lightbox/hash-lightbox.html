@@ -25,9 +25,13 @@
   .hlb__spin{position:absolute;top:50%;left:50%;width:36px;height:36px;margin:-18px;border:3px solid #ddd;
     border-top-color:#333;border-radius:50%;animation:hlb-spin .8s linear infinite}
   .hlb--loaded .hlb__spin{display:none}
-  .hlb__close{position:absolute;top:8px;right:8px;z-index:2;width:36px;height:36px;border:0;border-radius:50%;
-    background:rgba(0,0,0,.6);color:#fff;font:24px/36px sans-serif;cursor:pointer;padding:0}
+  .hlb__close{position:absolute;top:8px;right:8px;z-index:2;width:36px;height:36px;min-width:0;margin:0;padding:0;
+    border:0;border-radius:50%;background:rgba(0,0,0,.6);cursor:pointer;box-shadow:none}
   .hlb__close:hover{background:#000}
+  .hlb__close::before,.hlb__close::after{content:"";position:absolute;top:50%;left:50%;width:16px;height:2px;
+    margin:-1px 0 0 -8px;background:#fff;border-radius:1px}
+  .hlb__close::before{transform:rotate(45deg)}
+  .hlb__close::after{transform:rotate(-45deg)}
   html.hlb-lock,html.hlb-lock body{overflow:hidden}
   @keyframes hlb-spin{to{transform:rotate(360deg)}}
   @media (max-width:640px){.hlb__box{width:100vw;height:100%;border-radius:0}}
@@ -48,7 +52,7 @@
     root.setAttribute('role', 'dialog');
     root.setAttribute('aria-modal', 'true');
     root.innerHTML = '<div class="hlb__box"><div class="hlb__spin"></div>' +
-      '<button class="hlb__close" type="button" aria-label="Close">&times;</button>' +
+      '<button class="hlb__close" type="button" aria-label="Close"></button>' +
       '<iframe class="hlb__frame" title="Lightbox"></iframe></div>';
     document.body.appendChild(root);
     frame = root.querySelector('iframe');
